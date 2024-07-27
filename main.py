@@ -1,3 +1,6 @@
+import datetime
+import json
+import os
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -8,7 +11,7 @@ from models.subcategory import Subcategory
 
 # Define the target URL
 url = 'https://www.sklavenitis.gr/sitemap/'
-test_url = 'https://www.sklavenitis.gr/eidi-artozacharoplasteioy/psomi-artoskeyasmata/'
+test_url = 'https://www.sklavenitis.gr/freska-froyta-lachanika/'
 
 # Send a GET request
 response = requests.get(url)
@@ -16,8 +19,8 @@ test_response = requests.get(test_url)
 
 
 def main():
-    # getCategories()
-    getBread()
+    getCategories()
+    getFood(test_response)
     
 # Check if the request was successful
 def getCategories():
@@ -55,11 +58,20 @@ def getCategories():
         print(category)
     return
 
-def getBread():
+def getFood(repsonse):
     food_items = []
 
-    soup = BeautifulSoup(test_response.text, 'html.parser')
-    # Check if the request was successful
+    soup = BeautifulSoup(repsonse.text, 'html.parser')
+    # product_number= soup.find('div', class_='page').find('span', class_='current-page').text.strip().split()[3]
+    # category_pages = int(product_number) // 24 + 1 if int(product_number) % 24 > 0 else ""
+    # if category_pages > 1:
+    #     for i in range(1, category_pages):
+    #         url = f'{response}/?pg={i}'
+    #         test_response = requests.get(url)
+    #         getFoodItems(test_response, food_items)
+    # else:
+    #     getFoodItems(test_response, food_items)
+        
     if test_response.status_code == 200:
         product_list = soup.find('section', class_='productList list-items-container')
 
@@ -70,6 +82,14 @@ def getBread():
             for product in products:
                 name = product.find('h4', class_='product__title').text.strip() if product.find('h4', class_='product__title') else 'No Name'
                 
+                # Extract product SKU from data-item attribute
+                data_item = product.get('data-item')
+                if data_item:
+                    product_data = json.loads(data_item)
+                    product_sku = product_data.get('ProductSKU', 'No SKU')
+                else:
+                    product_sku = 'No SKU'
+                
                 deleted_price_per_kilo = None
                 price_per_kilo = None
                 deleted_main_price = None
@@ -78,12 +98,17 @@ def getBread():
                 food_desc = None
                 has_kilo_price = None
                 has_piece_price = None
+                food_photo = None
+                
                 
                 product_inner_btm = product.find('div', class_='product_innerBtm')
                 if product_inner_btm:
                     price_kil_div = product_inner_btm.find('div', class_='priceKil')
                     ekptosi = price_kil_div.find('div', class_='deleted')
                     main_price_div = product_inner_btm.find('div', class_='main-price')
+                    image_tag = product.find('div', class_='product_innerTop').find('img')
+                    image_path = image_tag['src'] if image_tag else None
+                    food_photo = download_image(image_path, product_sku) if image_path else None
                     if ekptosi:
                         if price_kil_div:
                             deleted_price_per_kilo = price_kil_div.find('div', class_='deleted__price').text.strip() if price_kil_div.find('div', class_='deleted__price') else None
@@ -97,7 +122,7 @@ def getBread():
                         main_price = main_price_div.find('div', class_='price').text.strip().split()[0] if main_price_div.find('div', class_='price') else None
                 
                 
-                food_item = FoodItem(name=name, deleted_price_per_kilo=deleted_price_per_kilo, price_per_kilo=price_per_kilo, deleted_main_price=deleted_main_price, main_price=main_price, food_id= food_id, food_desc=food_desc, has_kilo_price=has_kilo_price, has_piece_price=has_piece_price)
+                food_item = FoodItem(name=name, deleted_price_per_kilo=deleted_price_per_kilo, price_per_kilo=price_per_kilo, deleted_main_price=deleted_main_price, main_price=main_price, food_id= food_id, food_desc=food_desc, has_kilo_price=has_kilo_price, has_piece_price=has_piece_price, food_photo=food_photo)
                 food_items.append(food_item)
         else:
             print('Product list not found')
@@ -107,5 +132,16 @@ def getBread():
     # Print the extracted food items
     for item in food_items:
         print(item)
+
+def download_image(image_url, image_name, save_folder='images'):
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+    image_path = os.path.join(save_folder,image_name + '.jpg')
+    response = requests.get(image_url, stream=True)
+    if response.status_code == 200:
+        with open(image_path, 'wb') as file:
+            for chunk in response.iter_content(1024):
+                file.write(chunk)
+    return image_path
 
 main()
