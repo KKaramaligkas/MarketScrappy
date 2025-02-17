@@ -1,1 +1,1 @@
-class
+price_per_kilo

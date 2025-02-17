@@ -15,6 +15,20 @@ class FoodItem:
 
     def add_food_item(self, food_item):
         self.food_item.append(food_item)
+        
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "food_id": self.food_id,
+            "food_desc": self.food_desc,
+            "has_kilo_price": self.has_kilo_price,
+            "has_piece_price": self.has_piece_price,
+            "price_per_kilo": self.price_per_kilo,
+            "deleted_price_per_kilo": self.deleted_price_per_kilo,
+            "deleted_main_price": self.deleted_main_price,
+            "main_price": self.main_price,
+            "food_photo": self.food_photo,
+        }
 
     def __repr__(self):
         return f"FoodItem(name={self.name}, deleted_price_per_kilo={self.deleted_price_per_kilo}, price_per_kilo={self.price_per_kilo}, deleted_main_price={self.deleted_main_price}, main_price={self.main_price}, food_photo={self.food_photo})"
